@@ -1,6 +1,7 @@
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
+using CounterStrikeSharp.API.Modules.Commands;
 using CSRepVanguard.Services;
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
@@ -42,7 +43,7 @@ public class CSRepVanguardPlugin : BasePlugin
         _db = new DatabaseService(Config, Logger);
         _api = new ApiService(Config, Logger);
 
-        // Inicializar la tabla de la DB en background al arrancar.
+        // Inicializar la tabla y reaplicar bans al arrancar el servidor.
         Task.Run(async () =>
         {
             try
@@ -50,6 +51,22 @@ public class CSRepVanguardPlugin : BasePlugin
                 await _db.InitializeAsync();
                 Logger.LogInformation("[CSRepVanguard] Plugin cargado. MinTrustRating={Min}, CooldownDays={Days}",
                     Config.MinTrustRating, Config.QueryCooldownDays);
+
+                // Al iniciarse el plugin por primera vez (o en cada carga), reaplicar ban
+                // a todos los jugadores que ya estaban marcados como baneados en la DB.
+                var bannedPlayers = (await _db.GetAllBannedPlayersAsync()).ToList();
+                if (bannedPlayers.Count > 0)
+                {
+                    Logger.LogInformation(
+                        "[CSRepVanguard] Startup: reaplicando ban a {Count} jugador(es) registrados en DB.",
+                        bannedPlayers.Count);
+                    foreach (var r in bannedPlayers)
+                        ExecuteBan(r.SteamId, r.SteamId, r.TrustRating);
+                }
+                else
+                {
+                    Logger.LogInformation("[CSRepVanguard] Startup: no hay jugadores baneados en DB.");
+                }
             }
             catch (Exception ex)
             {
@@ -57,6 +74,7 @@ public class CSRepVanguardPlugin : BasePlugin
             }
         });
 
+        AddCommand("css_csrep", "Comandos de administración CSRepVanguard", OnCsrepCommand);
         RegisterEventHandler<EventPlayerConnectFull>(OnPlayerConnectFull);
     }
 
@@ -146,6 +164,18 @@ public class CSRepVanguardPlugin : BasePlugin
                 Logger.LogInformation("[CSRepVanguard] {Name} ({SteamId}) → registro en DB: TrustRating={Rating:F2}, LastChecked={LastChecked:u}, IsBanned={Banned}",
                     playerName, steamId, record.TrustRating, record.LastChecked, record.IsBanned);
 
+            // ── Caso 1: jugador ya registrado y baneado → reaplicar ban inmediatamente ──
+            // No se consulta la API ni se comprueba el cooldown: el ban ya fue dictaminado.
+            if (record is not null && record.IsBanned)
+            {
+                Logger.LogInformation(
+                    "[CSRepVanguard] {Name} ({SteamId}) está marcado como baneado en DB. Reaplicando ban sin consultar la API.",
+                    playerName, steamId);
+                ExecuteBan(steamId, playerName, record.TrustRating);
+                return;
+            }
+
+            // ── Caso 2: no está baneado → verificar si el cooldown expiró ────────────
             bool needsApiQuery = record is null ||
                 (DateTime.UtcNow - record.LastChecked).TotalDays >= Config.QueryCooldownDays;
 
@@ -214,5 +244,77 @@ public class CSRepVanguardPlugin : BasePlugin
 
             Server.ExecuteCommand(command);
         });
+    }
+
+    // ── Desbaneo ──────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Ejecuta el comando de desbaneo para un SteamID.
+    /// DEBE llamarse desde dentro de un Server.NextFrame().
+    /// </summary>
+    private void ExecuteUnban(string steamId)
+    {
+        var command = Config.UnbanCommand.Replace("{steamid}", steamId);
+        Logger.LogInformation("[CSRepVanguard] Desbaneando {SteamId}. Comando: {Cmd}", steamId, command);
+        Server.ExecuteCommand(command);
+    }
+
+    // ── Comando css_csrep ─────────────────────────────────────────────────────
+
+    private void OnCsrepCommand(CCSPlayerController? player, CommandInfo info)
+    {
+        var sub = info.ArgCount >= 2 ? info.GetArg(1).ToLowerInvariant() : string.Empty;
+
+        switch (sub)
+        {
+            case "unbanall":
+                Task.Run(() => HandleUnbanAllAsync(player));
+                break;
+
+            default:
+                info.ReplyToCommand("[CSRepVanguard] Uso: css_csrep unbanall");
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Desbanea a todos los jugadores registrados en la DB como baneados,
+    /// ejecuta el UnbanCommand por cada uno y limpia el flag en la tabla.
+    /// </summary>
+    private async Task HandleUnbanAllAsync(CCSPlayerController? caller)
+    {
+        try
+        {
+            var bannedPlayers = (await _db.GetAllBannedPlayersAsync()).ToList();
+
+            Logger.LogInformation(
+                "[CSRepVanguard] css_csrep unbanall → desbaneando {Count} jugador(es).",
+                bannedPlayers.Count);
+
+            // Ejecutar el comando de desbaneo en el hilo del juego.
+            Server.NextFrame(() =>
+            {
+                foreach (var r in bannedPlayers)
+                    ExecuteUnban(r.SteamId);
+            });
+
+            // Actualizar la DB fuera del hilo del juego.
+            await _db.UnbanAllPlayersAsync();
+
+            var msg = $"[CSRepVanguard] {bannedPlayers.Count} jugador(es) desbaneados correctamente.";
+            Logger.LogInformation(msg);
+
+            Server.NextFrame(() =>
+            {
+                if (caller is not null && caller.IsValid)
+                    caller.PrintToChat(msg);
+                else
+                    Server.PrintToConsole(msg);
+            });
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "[CSRepVanguard] Error ejecutando css_csrep unbanall.");
+        }
     }
 }

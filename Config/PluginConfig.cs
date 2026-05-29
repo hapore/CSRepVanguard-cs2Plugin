@@ -72,4 +72,14 @@ public class PluginConfig : BasePluginConfig
     /// </summary>
     [JsonPropertyName("TablePrefix")]
     public string TablePrefix { get; set; } = "cs_rep_";
+
+    // ── Comando de desbaneo ───────────────────────────────────────────────────
+
+    /// <summary>
+    /// Comando del servidor que se ejecutará para desbanear a un jugador.
+    /// Placeholder disponible:
+    ///   {steamid} → SteamID64 del jugador
+    /// </summary>
+    [JsonPropertyName("UnbanCommand")]
+    public string UnbanCommand { get; set; } = "css_unban #{steamid}";
 }

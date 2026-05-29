@@ -114,4 +114,56 @@ public class DatabaseService
             _logger.LogError(ex, "[CSRepVanguard] Error al guardar registro para {SteamId}.", steamId);
         }
     }
+
+    // ── Consultas masivas ─────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Devuelve todos los registros con is_banned = 1.
+    /// Se usa al arrancar el servidor para reaplicar bans.
+    /// </summary>
+    public async Task<IEnumerable<PlayerRecord>> GetAllBannedPlayersAsync()
+    {
+        var sql = $"""
+            SELECT steam_id   AS SteamId,
+                   trust_rating AS TrustRating,
+                   last_checked AS LastChecked,
+                   is_banned    AS IsBanned
+            FROM {_tablePlayers}
+            WHERE is_banned = 1;
+            """;
+
+        try
+        {
+            await using var conn = new MySqlConnection(_connectionString);
+            return await conn.QueryAsync<PlayerRecord>(sql);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[CSRepVanguard] Error al obtener jugadores baneados.");
+            return Enumerable.Empty<PlayerRecord>();
+        }
+    }
+
+    /// <summary>
+    /// Establece is_banned = 0 en todos los registros de la tabla.
+    /// Se llama desde el comando css_csrep unbanall.
+    /// </summary>
+    public async Task UnbanAllPlayersAsync()
+    {
+        var sql = $"""
+            UPDATE {_tablePlayers}
+            SET is_banned = 0;
+            """;
+
+        try
+        {
+            await using var conn = new MySqlConnection(_connectionString);
+            await conn.ExecuteAsync(sql);
+            _logger.LogInformation("[CSRepVanguard] Todos los registros marcados como desbaneados en DB.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[CSRepVanguard] Error al desbanear todos los jugadores en DB.");
+        }
+    }
 }

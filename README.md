@@ -15,20 +15,30 @@ Jugador se conecta
        Sí                          ▼
         │                  Guardar resultado en DB
         ▼                          │
-¿Pasaron >= QueryCooldownDays?     │
-       No ◄────────────────────────┘
+¿is_banned = 1?                    │
+   Sí ◄────────────────────────────┘
+    │
+    ▼
+Ejecutar BanCommand  ◄── (salida inmediata, sin llamar a la API)
+        │
+       No (is_banned = 0)
         │
         ▼
-   Usar caché DB
-        │
-        └──────────────────────────────────┐
-                                           ▼
-                               ¿TrustRating < MinTrustRating?
-                                    │               │
-                                   Sí               No
-                                    │               │
-                                    ▼               ▼
-                             Ejecutar BanCommand   (sin acción)
+¿Pasaron >= QueryCooldownDays desde LastChecked?
+       Sí                         No
+        │                          │
+        ▼                          ▼
+Consultar API csrep.gg       Usar caché DB
+        │                          │
+        └──────────────────────────┘
+                    │
+                    ▼
+        ¿TrustRating < MinTrustRating?
+             │               │
+            Sí               No
+             │               │
+             ▼               ▼
+      Ejecutar BanCommand   (sin acción)
 ```
 
 ### Paso a paso
@@ -37,16 +47,21 @@ Jugador se conecta
 
 2. **Consulta a la base de datos** — Se busca el registro del jugador por SteamID64 en la tabla `{TablePrefix}players`.
 
-3. **¿Se necesita consultar la API?**
+3. **¿El jugador ya está baneado en DB?**
+   - Si `is_banned = 1` → se ejecuta `BanCommand` **inmediatamente**, sin consultar la API ni comprobar el cooldown. El ban ya fue dictaminado previamente.
+
+4. **¿Se necesita consultar la API?** (solo si `is_banned = 0`)
    - Si **no existe registro** → consultar siempre.
    - Si existe pero `(ahora - LastChecked) >= QueryCooldownDays` → consultar de nuevo.
    - Si el cooldown no ha expirado → usar el `TrustRating` guardado en DB (sin llamada a la API).
 
-4. **Llamada a la API** — `GET https://csrep.gg/api/players?ids={steamId64}` con el header `x-api-key`. Si la API falla o no responde, **no se banea** al jugador (beneficio de la duda).
+5. **Llamada a la API** — `GET https://csrep.gg/api/players?ids={steamId64}` con el header `x-api-key`. Si la API falla o no responde, **no se banea** al jugador (beneficio de la duda).
 
-5. **Persistencia** — El resultado se guarda/actualiza en la DB con el timestamp actual y el flag `is_banned`.
+6. **Persistencia** — El resultado se guarda/actualiza en la DB con el timestamp actual y el flag `is_banned`.
 
-6. **Decisión de baneo** — Si `TrustRating < MinTrustRating`, se ejecuta `BanCommand` en el hilo del juego via `Server.NextFrame()`.
+7. **Decisión de baneo** — Si `TrustRating < MinTrustRating`, se ejecuta `BanCommand` en el hilo del juego via `Server.NextFrame()`.
+
+8. **Startup del servidor** — Al cargar el plugin (o en cada hot-reload), se obtienen todos los registros con `is_banned = 1` de la DB y se ejecuta `BanCommand` por cada uno. Esto garantiza que los bans persistan entre reinicios del servidor.
 
 ---
 
@@ -89,6 +104,7 @@ Archivo: `addons/counterstrikesharp/configs/plugins/CSRepVanguard/CSRepVanguard.
   "ApiBaseUrl": "https://csrep.gg/api/players",
   "MinTrustRating": 80.0,
   "BanCommand": "css_ban #{steamid} 0 \"[CSRep] Trust Rating insuficiente ({trustrating})\"",
+  "UnbanCommand": "css_unban #{steamid}",
   "QueryCooldownDays": 1,
   "DatabaseConnectionString": "Server=localhost;Port=3306;Database=csrep;User=csrep_user;Password=CHANGE_ME;",
   "TablePrefix": "cs_rep_"
@@ -101,6 +117,7 @@ Archivo: `addons/counterstrikesharp/configs/plugins/CSRepVanguard/CSRepVanguard.
 | `ApiBaseUrl` | `string` | URL base del endpoint. El SteamID64 se pasa como `?ids=`. |
 | `MinTrustRating` | `double` | Trust Rating mínimo. Jugadores **por debajo** de este valor son baneados. |
 | `BanCommand` | `string` | Comando ejecutado al banear. Soporta `{steamid}`, `{name}` y `{trustrating}`. |
+| `UnbanCommand` | `string` | Comando ejecutado al desbanear. Soporta `{steamid}`. |
 | `QueryCooldownDays` | `int` | Días que deben pasar antes de volver a consultar la API por el mismo jugador. |
 | `DatabaseConnectionString` | `string` | Cadena de conexión MySQL/MariaDB. |
 | `TablePrefix` | `string` | Prefijo de las tablas. Default `cs_rep_` → tabla `cs_rep_players`. |
@@ -112,6 +129,20 @@ Archivo: `addons/counterstrikesharp/configs/plugins/CSRepVanguard/CSRepVanguard.
 | `{steamid}` | SteamID64 del jugador |
 | `{name}` | Nombre en Steam del jugador |
 | `{trustrating}` | Valor numérico obtenido de la API |
+
+### Placeholders de `UnbanCommand`
+
+| Placeholder | Valor |
+|---|---|
+| `{steamid}` | SteamID64 del jugador |
+
+---
+
+## Comandos de administración
+
+| Comando | Descripción |
+|---|---|
+| `css_csrep unbanall` | Desbanea a todos los jugadores registrados como baneados en la DB. Ejecuta `UnbanCommand` por cada uno y limpia el flag `is_banned` en la tabla. Puede ejecutarse desde consola del servidor o por un admin con permisos. |
 
 ---
 
