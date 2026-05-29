@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <AssemblyName>CSRepVanguard</AssemblyName>
+        <RootNamespace>CSRepVanguard</RootNamespace>
+        <!--
+            Copia todos los .dll de NuGet al directorio de salida.
+            Necesario para que CounterStrikeSharp pueda cargar MySqlConnector y Dapper
+            al cargar el plugin (los dlls deben estar junto al CSRepVanguard.dll).
+        -->
+        <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <!--
+      CounterStrikeSharp.API: SDK del framework de plugins para CS2.
+      Puedes ajustar la versión según la release que tengas instalada.
+    -->
+        <PackageReference Include="CounterStrikeSharp.API" Version="1.*" />
+
+        <!-- MySqlConnector: driver moderno y asíncrono para MySQL/MariaDB -->
+        <PackageReference Include="MySqlConnector" Version="2.*" />
+
+        <!-- Dapper: micro-ORM liviano para ejecutar SQL con facilidad -->
+        <PackageReference Include="Dapper" Version="2.*" />
+    </ItemGroup>
+
+</Project>

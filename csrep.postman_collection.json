@@ -1,0 +1,175 @@
+{
+  "info": {
+    "_postman_id": "52315372-e378-44d3-bddb-4ee50ae335e4",
+    "name": "csrep",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "25137562"
+  },
+  "item": [
+    {
+      "name": "trustRating",
+      "request": {
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "value",
+              "value": "77e0b9e2-bcb2-4d4b-8d36-27f510ac6686",
+              "type": "string"
+            },
+            {
+              "key": "key",
+              "value": "x-api-key",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "https://csrep.gg/api/players/{{id}}",
+          "protocol": "https",
+          "host": [
+            "csrep",
+            "gg"
+          ],
+          "path": [
+            "api",
+            "players",
+            "{{id}}"
+          ]
+        }
+      },
+      "response": [
+        {
+          "name": "trustRating",
+          "originalRequest": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "",
+                "value": "",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "https://csrep.gg/api/players?ids={{ids}}",
+              "protocol": "https",
+              "host": [
+                "csrep",
+                "gg"
+              ],
+              "path": [
+                "api",
+                "players"
+              ],
+              "query": [
+                {
+                  "key": "ids",
+                  "value": "{{ids}}"
+                }
+              ]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": null,
+          "header": [
+            {
+              "key": ":status",
+              "value": 200
+            },
+            {
+              "key": "date",
+              "value": "Fri, 29 May 2026 20:22:56 GMT"
+            },
+            {
+              "key": "content-type",
+              "value": "application/json; charset=utf-8"
+            },
+            {
+              "key": "content-length",
+              "value": "715"
+            },
+            {
+              "key": "access-control-allow-credentials",
+              "value": "true"
+            },
+            {
+              "key": "content-encoding",
+              "value": "gzip"
+            },
+            {
+              "key": "etag",
+              "value": "W/\"50b-4KKSLq4PwPrCOS5yRIpRgubksDM\""
+            },
+            {
+              "key": "vary",
+              "value": "Origin, Accept-Encoding"
+            },
+            {
+              "key": "via",
+              "value": "1.1 Caddy"
+            },
+            {
+              "key": "x-powered-by",
+              "value": "Express"
+            },
+            {
+              "key": "cf-cache-status",
+              "value": "DYNAMIC"
+            },
+            {
+              "key": "nel",
+              "value": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}"
+            },
+            {
+              "key": "report-to",
+              "value": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=Qkj83ih8rtgnpiZUFecP7qazawTKVj3pODtZwNlN0UATPfsyc2qGC3BRO%2FL8GGVmQXsHtr0Z6heHTocYaPZQTjM3sAjtEBah6P5b65dBlDDIOs9NIw8Sr%2FNk\"}]}"
+            },
+            {
+              "key": "server",
+              "value": "cloudflare"
+            },
+            {
+              "key": "cf-ray",
+              "value": "a03836c65ef25ef6-ASU"
+            }
+          ],
+          "cookie": [],
+          "body": "{\n    \"result\": {\n        \"id\": \"76561199015845161\",\n        \"redacted\": false,\n        \"name\": \"GC | Foxx\",\n        \"avatar\": \"https://avatars.steamstatic.com/a3d4712fd119c02093570ce58f87469e1ffd16e1_full.jpg\",\n        \"steam_status\": 0,\n        \"steam_active_game\": null,\n        \"steam_level\": 12,\n        \"steam_vanity_url\": \"https://steamcommunity.com/id/foxxsmurf\",\n        \"steam_created_at\": \"2020-01-04T02:46:37.000Z\",\n        \"cs2_hours\": 3562,\n        \"inventory_value\": 885,\n        \"faceit_id\": \"baaa80a9-d254-4a46-b397-1d5bb6984cac\",\n        \"faceit_url\": \"https://www.faceit.com/{lang}/players/RacconnATR\",\n        \"faceit_level\": 9,\n        \"faceit_elo\": 1939,\n        \"premier_elo\": 22051,\n        \"trust_rating\": 100,\n        \"map_ranks\": {\n            \"de_mirage\": 15,\n            \"de_ancient\": 13\n        },\n        \"bans\": {\n            \"vac\": false,\n            \"game\": false,\n            \"faceit\": false,\n            \"economy\": false,\n            \"community\": false,\n            \"overwatch\": false,\n            \"days_since_last_ban\": 0\n        },\n        \"commendations\": {\n            \"leader\": 35,\n            \"friendly\": 39,\n            \"teaching\": 36\n        },\n        \"medals\": [\n            5170,\n            5270,\n            5011,\n            4952,\n            4986,\n            874,\n            996,\n            4874,\n            4819,\n            4737,\n            4674\n        ],\n        \"privacy\": {},\n        \"refreshed_at\": \"2026-05-29T17:16:27.540Z\",\n        \"created_at\": \"2025-12-12T23:04:04.957Z\",\n        \"updated_at\": \"2026-05-29T17:16:27.883Z\",\n        \"deleted_at\": null,\n        \"user\": {\n            \"id\": \"49ca6dd6-46eb-4b6b-8178-d6e31a07778d\",\n            \"steam_id\": \"76561199015845161\",\n            \"name\": \"GC | Foxx\",\n            \"avatar\": \"https://avatars.steamstatic.com/a3d4712fd119c02093570ce58f87469e1ffd16e1_full.jpg\",\n            \"roles\": [\n                \"CLOSED_BETA\",\n                \"OVERWATCH\"\n            ],\n            \"created_at\": \"2025-12-12T14:25:57.566Z\"\n        }\n    },\n    \"status\": \"OK\"\n}"
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "ids",
+      "value": ""
+    }
+  ]
+}

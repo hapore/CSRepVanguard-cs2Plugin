@@ -1,0 +1,12 @@
+C:\Users\alanj\OneDrive\Escritorio\TypeScript\hapore-web-cs2\CSRepService\bin\Debug\net8.0\CSRepService.deps.json
+C:\Users\alanj\OneDrive\Escritorio\TypeScript\hapore-web-cs2\CSRepService\bin\Debug\net8.0\CSRepService.dll
+C:\Users\alanj\OneDrive\Escritorio\TypeScript\hapore-web-cs2\CSRepService\bin\Debug\net8.0\CSRepService.pdb
+C:\Users\alanj\OneDrive\Escritorio\TypeScript\hapore-web-cs2\CSRepService\obj\Debug\net8.0\CSRepService.csproj.AssemblyReference.cache
+C:\Users\alanj\OneDrive\Escritorio\TypeScript\hapore-web-cs2\CSRepService\obj\Debug\net8.0\CSRepService.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\alanj\OneDrive\Escritorio\TypeScript\hapore-web-cs2\CSRepService\obj\Debug\net8.0\CSRepService.AssemblyInfoInputs.cache
+C:\Users\alanj\OneDrive\Escritorio\TypeScript\hapore-web-cs2\CSRepService\obj\Debug\net8.0\CSRepService.AssemblyInfo.cs
+C:\Users\alanj\OneDrive\Escritorio\TypeScript\hapore-web-cs2\CSRepService\obj\Debug\net8.0\CSRepService.csproj.CoreCompileInputs.cache
+C:\Users\alanj\OneDrive\Escritorio\TypeScript\hapore-web-cs2\CSRepService\obj\Debug\net8.0\CSRepService.dll
+C:\Users\alanj\OneDrive\Escritorio\TypeScript\hapore-web-cs2\CSRepService\obj\Debug\net8.0\refint\CSRepService.dll
+C:\Users\alanj\OneDrive\Escritorio\TypeScript\hapore-web-cs2\CSRepService\obj\Debug\net8.0\CSRepService.pdb
+C:\Users\alanj\OneDrive\Escritorio\TypeScript\hapore-web-cs2\CSRepService\obj\Debug\net8.0\ref\CSRepService.dll
