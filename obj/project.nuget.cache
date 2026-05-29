@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "QrxK19v2WW0=",
+  "dgSpecHash": "z08T+rT5DBg=",
   "success": true,
-  "projectFilePath": "C:\\Users\\alanj\\OneDrive\\Escritorio\\TypeScript\\hapore-web-cs2\\CSRepService\\CSRepVanguard.csproj",
+  "projectFilePath": "C:\\Users\\alanj\\OneDrive\\Escritorio\\TypeScript\\hapore-web-cs2\\CSRepVanguard-cs2Plugin\\CSRepVanguard.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\Foxx\\.nuget\\packages\\counterstrikesharp.api\\1.0.368\\counterstrikesharp.api.1.0.368.nupkg.sha512",
     "C:\\Users\\Foxx\\.nuget\\packages\\dapper\\2.1.79\\dapper.2.1.79.nupkg.sha512",
