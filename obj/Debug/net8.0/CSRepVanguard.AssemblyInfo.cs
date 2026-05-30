@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("CSRepVanguard")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+2282a481e79dadde8320b654eb8c67b25b0dc976")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+beca452194334fd1483cf5963bc0914adfe09d29")]
 [assembly: System.Reflection.AssemblyProductAttribute("CSRepVanguard")]
 [assembly: System.Reflection.AssemblyTitleAttribute("CSRepVanguard")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

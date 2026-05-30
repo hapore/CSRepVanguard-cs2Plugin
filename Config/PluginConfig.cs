@@ -43,7 +43,7 @@ public class PluginConfig : BasePluginConfig
     /// Por defecto usa el comando nativo de CounterStrikeSharp.
     /// </summary>
     [JsonPropertyName("BanCommand")]
-    public string BanCommand { get; set; } = "css_ban #{steamid} 0 \"[CSRep] Trust Rating insuficiente ({trustrating})\"";
+    public string BanCommand { get; set; } = "css_ban {steamid} 0 \"[CSRep] Trust Rating insuficiente ({trustrating})\"";
 
     // ── Cooldown de consultas ─────────────────────────────────────────────────
 
@@ -81,5 +81,5 @@ public class PluginConfig : BasePluginConfig
     ///   {steamid} → SteamID64 del jugador
     /// </summary>
     [JsonPropertyName("UnbanCommand")]
-    public string UnbanCommand { get; set; } = "css_unban #{steamid}";
+    public string UnbanCommand { get; set; } = "css_unban {steamid}";
 }

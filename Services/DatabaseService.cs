@@ -1,6 +1,5 @@
 using CSRepVanguard.Models;
 using Dapper;
-using Microsoft.Extensions.Logging;
 using MySqlConnector;
 
 namespace CSRepVanguard.Services;
@@ -12,13 +11,11 @@ namespace CSRepVanguard.Services;
 public class DatabaseService
 {
     private readonly string _connectionString;
-    private readonly ILogger _logger;
     private readonly string _tablePlayers;
 
-    public DatabaseService(PluginConfig config, ILogger logger)
+    public DatabaseService(PluginConfig config)
     {
         _connectionString = config.DatabaseConnectionString;
-        _logger = logger;
         _tablePlayers = $"`{config.TablePrefix}players`";
     }
 
@@ -43,11 +40,11 @@ public class DatabaseService
         {
             await using var conn = new MySqlConnection(_connectionString);
             await conn.ExecuteAsync(sql);
-            _logger.LogInformation("[CSRepVanguard] Tabla {Table} lista.", _tablePlayers);
+            Console.WriteLine($"[CSRepVanguard] Tabla {_tablePlayers} lista.");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[CSRepVanguard] Error al inicializar la base de datos.");
+            Console.WriteLine($"[CSRepVanguard] Error al inicializar la base de datos: {ex.Message}");
             throw;
         }
     }
@@ -77,7 +74,7 @@ public class DatabaseService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[CSRepVanguard] Error al obtener registro para {SteamId}.", steamId);
+            Console.WriteLine($"[CSRepVanguard] Error al obtener registro para {steamId}: {ex.Message}");
             return null;
         }
     }
@@ -111,7 +108,7 @@ public class DatabaseService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[CSRepVanguard] Error al guardar registro para {SteamId}.", steamId);
+            Console.WriteLine($"[CSRepVanguard] Error al guardar registro para {steamId}: {ex.Message}");
         }
     }
 
@@ -139,31 +136,33 @@ public class DatabaseService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[CSRepVanguard] Error al obtener jugadores baneados.");
+            Console.WriteLine($"[CSRepVanguard] Error al obtener jugadores baneados: {ex.Message}");
             return Enumerable.Empty<PlayerRecord>();
         }
     }
 
     /// <summary>
-    /// Establece is_banned = 0 en todos los registros de la tabla.
+    /// Establece is_banned = 0 y resetea last_checked a una fecha antigua en todos los
+    /// registros, forzando una consulta fresca a la API en la próxima conexión de cada jugador.
     /// Se llama desde el comando css_csrep unbanall.
     /// </summary>
     public async Task UnbanAllPlayersAsync()
     {
         var sql = $"""
             UPDATE {_tablePlayers}
-            SET is_banned = 0;
+            SET is_banned    = 0,
+                last_checked = '2000-01-01 00:00:00';
             """;
 
         try
         {
             await using var conn = new MySqlConnection(_connectionString);
             await conn.ExecuteAsync(sql);
-            _logger.LogInformation("[CSRepVanguard] Todos los registros marcados como desbaneados en DB.");
+            Console.WriteLine("[CSRepVanguard] Todos los registros marcados como desbaneados en DB.");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[CSRepVanguard] Error al desbanear todos los jugadores en DB.");
+            Console.WriteLine($"[CSRepVanguard] Error al desbanear todos los jugadores en DB: {ex.Message}");
         }
     }
 }

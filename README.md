@@ -61,8 +61,6 @@ Consultar API csrep.gg       Usar caché DB
 
 7. **Decisión de baneo** — Si `TrustRating < MinTrustRating`, se ejecuta `BanCommand` en el hilo del juego via `Server.NextFrame()`.
 
-8. **Startup del servidor** — Al cargar el plugin (o en cada hot-reload), se obtienen todos los registros con `is_banned = 1` de la DB y se ejecuta `BanCommand` por cada uno. Esto garantiza que los bans persistan entre reinicios del servidor.
-
 ---
 
 ## Instalación
@@ -103,8 +101,8 @@ Archivo: `addons/counterstrikesharp/configs/plugins/CSRepVanguard/CSRepVanguard.
   "ApiKey": "tu-api-key-de-csrep.gg",
   "ApiBaseUrl": "https://csrep.gg/api/players",
   "MinTrustRating": 80.0,
-  "BanCommand": "css_ban #{steamid} 0 \"[CSRep] Trust Rating insuficiente ({trustrating})\"",
-  "UnbanCommand": "css_unban #{steamid}",
+  "BanCommand": "css_ban {steamid} 0 \"[CSRep] Trust Rating insuficiente ({trustrating})\"",
+  "UnbanCommand": "css_unban {steamid}",
   "QueryCooldownDays": 1,
   "DatabaseConnectionString": "Server=localhost;Port=3306;Database=csrep;User=csrep_user;Password=CHANGE_ME;",
   "TablePrefix": "cs_rep_"

@@ -3,7 +3,6 @@ using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Commands;
 using CSRepVanguard.Services;
-using Microsoft.Extensions.Logging;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -40,37 +39,20 @@ public class CSRepVanguardPlugin : BasePlugin
     {
         Config = LoadOrCreateConfig();
 
-        _db = new DatabaseService(Config, Logger);
-        _api = new ApiService(Config, Logger);
+        _db = new DatabaseService(Config);
+        _api = new ApiService(Config);
 
-        // Inicializar la tabla y reaplicar bans al arrancar el servidor.
+        // Inicializar la tabla al arrancar el servidor.
         Task.Run(async () =>
         {
             try
             {
                 await _db.InitializeAsync();
-                Logger.LogInformation("[CSRepVanguard] Plugin cargado. MinTrustRating={Min}, CooldownDays={Days}",
-                    Config.MinTrustRating, Config.QueryCooldownDays);
-
-                // Al iniciarse el plugin por primera vez (o en cada carga), reaplicar ban
-                // a todos los jugadores que ya estaban marcados como baneados en la DB.
-                var bannedPlayers = (await _db.GetAllBannedPlayersAsync()).ToList();
-                if (bannedPlayers.Count > 0)
-                {
-                    Logger.LogInformation(
-                        "[CSRepVanguard] Startup: reaplicando ban a {Count} jugador(es) registrados en DB.",
-                        bannedPlayers.Count);
-                    foreach (var r in bannedPlayers)
-                        ExecuteBan(r.SteamId, r.SteamId, r.TrustRating);
-                }
-                else
-                {
-                    Logger.LogInformation("[CSRepVanguard] Startup: no hay jugadores baneados en DB.");
-                }
+                Console.WriteLine($"[CSRepVanguard] Plugin cargado. MinTrustRating={Config.MinTrustRating}, CooldownDays={Config.QueryCooldownDays}");
             }
             catch (Exception ex)
             {
-                Logger.LogError(ex, "[CSRepVanguard] Fallo al conectar con la base de datos. El plugin no funcionará.");
+                Console.WriteLine($"[CSRepVanguard] Fallo al conectar con la base de datos: {ex.Message}");
             }
         });
 
@@ -106,7 +88,7 @@ public class CSRepVanguardPlugin : BasePlugin
             }
             catch (Exception ex)
             {
-                Logger.LogError(ex, "[CSRepVanguard] Error al leer {Path}. Usando valores por defecto.", configPath);
+                Console.WriteLine($"[CSRepVanguard] Error al leer {configPath}. Usando valores por defecto. Error: {ex.Message}");
                 return new PluginConfig();
             }
         }
@@ -117,13 +99,11 @@ public class CSRepVanguardPlugin : BasePlugin
         {
             Directory.CreateDirectory(configDir);
             File.WriteAllText(configPath, JsonSerializer.Serialize(defaultConfig, JsonOptions));
-            Logger.LogInformation("[CSRepVanguard] Archivo de configuración creado en {Path}", configPath);
+            Console.WriteLine($"[CSRepVanguard] Archivo de configuración creado en {configPath}");
         }
         catch (Exception ex)
         {
-            Logger.LogWarning(ex,
-                "[CSRepVanguard] No se pudo crear {Path}. Créalo manualmente con el contenido del README.",
-                configPath);
+            Console.WriteLine($"[CSRepVanguard] No se pudo crear {configPath}. Créalo manualmente con el contenido del README. Error: {ex.Message}");
         }
 
         return defaultConfig;
@@ -142,7 +122,7 @@ public class CSRepVanguardPlugin : BasePlugin
 
         var steamId = player.SteamID.ToString();
         var playerName = player.PlayerName;
-        Logger.LogInformation("[CSRepVanguard] Jugador conectado: {Name} | SteamID={SteamId}", playerName, steamId);
+        Console.WriteLine($"[CSRepVanguard] Jugador conectado: {playerName} | SteamID={steamId}");
 
         // Solo pasamos strings al hilo de fondo — nunca el objeto nativo CCSPlayerController.
         Task.Run(() => CheckPlayerTrustAsync(steamId, playerName));
@@ -159,18 +139,15 @@ public class CSRepVanguardPlugin : BasePlugin
             var record = await _db.GetPlayerRecordAsync(steamId);
 
             if (record is null)
-                Logger.LogInformation("[CSRepVanguard] {Name} ({SteamId}) → sin registro en DB, consultará API.", playerName, steamId);
+                Console.WriteLine($"[CSRepVanguard] {playerName} ({steamId}) → sin registro en DB, consultará API.");
             else
-                Logger.LogInformation("[CSRepVanguard] {Name} ({SteamId}) → registro en DB: TrustRating={Rating:F2}, LastChecked={LastChecked:u}, IsBanned={Banned}",
-                    playerName, steamId, record.TrustRating, record.LastChecked, record.IsBanned);
+                Console.WriteLine($"[CSRepVanguard] {playerName} ({steamId}) → registro en DB: TrustRating={record.TrustRating:F2}, LastChecked={record.LastChecked:u}, IsBanned={record.IsBanned}");
 
             // ── Caso 1: jugador ya registrado y baneado → reaplicar ban inmediatamente ──
             // No se consulta la API ni se comprueba el cooldown: el ban ya fue dictaminado.
             if (record is not null && record.IsBanned)
             {
-                Logger.LogInformation(
-                    "[CSRepVanguard] {Name} ({SteamId}) está marcado como baneado en DB. Reaplicando ban sin consultar la API.",
-                    playerName, steamId);
+                Console.WriteLine($"[CSRepVanguard] {playerName} ({steamId}) está marcado como baneado en DB. Reaplicando ban sin consultar la API.");
                 ExecuteBan(steamId, playerName, record.TrustRating);
                 return;
             }
@@ -179,40 +156,34 @@ public class CSRepVanguardPlugin : BasePlugin
             bool needsApiQuery = record is null ||
                 (DateTime.UtcNow - record.LastChecked).TotalDays >= Config.QueryCooldownDays;
 
-            Logger.LogInformation("[CSRepVanguard] {Name} ({SteamId}) → needsApiQuery={NeedsQuery} (CooldownDays={Cooldown})",
-                playerName, steamId, needsApiQuery, Config.QueryCooldownDays);
+            Console.WriteLine($"[CSRepVanguard] {playerName} ({steamId}) → needsApiQuery={needsApiQuery} (CooldownDays={Config.QueryCooldownDays})");
 
             double trustRating;
 
             if (needsApiQuery)
             {
-                Logger.LogInformation("[CSRepVanguard] Consultando API para {Name} ({SteamId})...", playerName, steamId);
+                Console.WriteLine($"[CSRepVanguard] Consultando API para {playerName} ({steamId})...");
 
                 var result = await _api.GetTrustRatingAsync(steamId);
                 if (result is null)
                 {
                     // Si la API falla, no banear: dar beneficio de la duda.
-                    Logger.LogWarning("[CSRepVanguard] No se pudo obtener Trust Rating para {Name} ({SteamId}). Se omite el baneo.",
-                        playerName, steamId);
+                    Console.WriteLine($"[CSRepVanguard] No se pudo obtener Trust Rating para {playerName} ({steamId}). Se omite el baneo.");
                     return;
                 }
 
                 trustRating = result.Value;
                 bool willBan = trustRating < Config.MinTrustRating;
 
-                Logger.LogInformation("[CSRepVanguard] API devolvió TrustRating={Rating:F2} para {Name} ({SteamId}). Guardando en DB (willBan={WillBan})...",
-                    trustRating, playerName, steamId, willBan);
+                Console.WriteLine($"[CSRepVanguard] API devolvió TrustRating={trustRating:F2} para {playerName} ({steamId}). Guardando en DB (willBan={willBan})...");
                 await _db.UpsertPlayerRecordAsync(steamId, trustRating, willBan);
-                Logger.LogInformation("[CSRepVanguard] DB actualizada para {Name} ({SteamId}) → TrustRating={Rating:F2}", playerName, steamId, trustRating);
+                Console.WriteLine($"[CSRepVanguard] DB actualizada para {playerName} ({steamId}) → TrustRating={trustRating:F2}");
             }
             else
             {
                 // Usar el valor cacheado en la DB.
                 trustRating = record!.TrustRating;
-                Logger.LogInformation(
-                    "[CSRepVanguard] Usando Trust Rating en caché para {Name} ({SteamId}): {Rating:F2} (próxima consulta en {Days:F1} día/s)",
-                    playerName, steamId, trustRating,
-                    Config.QueryCooldownDays - (DateTime.UtcNow - record.LastChecked).TotalDays);
+                Console.WriteLine($"[CSRepVanguard] Usando Trust Rating en caché para {playerName} ({steamId}): {trustRating:F2} (próxima consulta en {Config.QueryCooldownDays - (DateTime.UtcNow - record.LastChecked).TotalDays:F1} día/s)");
             }
 
             if (trustRating < Config.MinTrustRating)
@@ -222,7 +193,7 @@ public class CSRepVanguardPlugin : BasePlugin
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "[CSRepVanguard] Error inesperado verificando a {Name} ({SteamId}).", playerName, steamId);
+            Console.WriteLine($"[CSRepVanguard] Error inesperado verificando a {playerName} ({steamId}): {ex.Message}");
         }
     }
 
@@ -235,28 +206,21 @@ public class CSRepVanguardPlugin : BasePlugin
             .Replace("{name}", playerName)
             .Replace("{trustrating}", trustRating.ToString("F2"));
 
-        // Las operaciones del servidor deben ejecutarse en el hilo del juego.
         Server.NextFrame(() =>
         {
-            Logger.LogInformation(
-                "[CSRepVanguard] Baneando a {Name} ({SteamId}) por Trust Rating {Rating:F2} < {Min:F2}. Comando: {Cmd}",
-                playerName, steamId, trustRating, Config.MinTrustRating, command);
-
+            Console.WriteLine($"[CSRepVanguard] *** BANEO *** {playerName} ({steamId}) | TrustRating={trustRating:F2} < {Config.MinTrustRating:F2} | Cmd: {command}");
             Server.ExecuteCommand(command);
         });
     }
 
     // ── Desbaneo ──────────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Ejecuta el comando de desbaneo para un SteamID.
-    /// DEBE llamarse desde dentro de un Server.NextFrame().
-    /// </summary>
     private void ExecuteUnban(string steamId)
     {
         var command = Config.UnbanCommand.Replace("{steamid}", steamId);
-        Logger.LogInformation("[CSRepVanguard] Desbaneando {SteamId}. Comando: {Cmd}", steamId, command);
-        Server.ExecuteCommand(command);
+        // Server.ExecuteCommand requiere el hilo principal del juego → Server.NextFrame.
+        Console.WriteLine($"[CSRepVanguard] Desbaneando {steamId}. Comando: {command}");
+        Server.NextFrame(() => Server.ExecuteCommand(command));
     }
 
     // ── Comando css_csrep ─────────────────────────────────────────────────────
@@ -287,22 +251,17 @@ public class CSRepVanguardPlugin : BasePlugin
         {
             var bannedPlayers = (await _db.GetAllBannedPlayersAsync()).ToList();
 
-            Logger.LogInformation(
-                "[CSRepVanguard] css_csrep unbanall → desbaneando {Count} jugador(es).",
-                bannedPlayers.Count);
+            Console.WriteLine($"[CSRepVanguard] css_csrep unbanall → desbaneando {bannedPlayers.Count} jugador(es).");
 
-            // Ejecutar el comando de desbaneo en el hilo del juego.
-            Server.NextFrame(() =>
-            {
-                foreach (var r in bannedPlayers)
-                    ExecuteUnban(r.SteamId);
-            });
+            // Ejecutar el comando de desbaneo (cada llamada agenda su propio NextFrame).
+            foreach (var r in bannedPlayers)
+                ExecuteUnban(r.SteamId);
 
             // Actualizar la DB fuera del hilo del juego.
             await _db.UnbanAllPlayersAsync();
 
             var msg = $"[CSRepVanguard] {bannedPlayers.Count} jugador(es) desbaneados correctamente.";
-            Logger.LogInformation(msg);
+            Console.WriteLine(msg);
 
             Server.NextFrame(() =>
             {
@@ -314,7 +273,7 @@ public class CSRepVanguardPlugin : BasePlugin
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "[CSRepVanguard] Error ejecutando css_csrep unbanall.");
+            Console.WriteLine($"[CSRepVanguard] Error ejecutando css_csrep unbanall: {ex.Message}");
         }
     }
 }

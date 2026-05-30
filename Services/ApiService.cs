@@ -1,5 +1,4 @@
 using System.Text.Json;
-using Microsoft.Extensions.Logging;
 
 namespace CSRepVanguard.Services;
 
@@ -14,13 +13,11 @@ namespace CSRepVanguard.Services;
 public class ApiService : IDisposable
 {
     private readonly PluginConfig _config;
-    private readonly ILogger _logger;
     private readonly HttpClient _http;
 
-    public ApiService(PluginConfig config, ILogger logger)
+    public ApiService(PluginConfig config)
     {
         _config = config;
-        _logger = logger;
 
         _http = new HttpClient
         {
@@ -41,31 +38,29 @@ public class ApiService : IDisposable
         try
         {
             using var request = BuildRequestMessage(steamId64);
-            _logger.LogInformation("[CSRepVanguard] API → GET {Url}", request.RequestUri);
+            Console.WriteLine($"[CSRepVanguard] API → GET {request.RequestUri}");
 
             using var response = await _http.SendAsync(request);
-            _logger.LogInformation("[CSRepVanguard] API ← HTTP {StatusCode} para {SteamId}", (int)response.StatusCode, steamId64);
+            Console.WriteLine($"[CSRepVanguard] API ← HTTP {(int)response.StatusCode} para {steamId64}");
 
             if (!response.IsSuccessStatusCode)
             {
-                _logger.LogWarning(
-                    "[CSRepVanguard] API respondió {StatusCode} para SteamID {SteamId}",
-                    (int)response.StatusCode, steamId64);
+                Console.WriteLine($"[CSRepVanguard] API respondió {(int)response.StatusCode} para SteamID {steamId64}");
                 return null;
             }
 
             var body = await response.Content.ReadAsStringAsync();
-            _logger.LogInformation("[CSRepVanguard] API body para {SteamId}: {Body}", steamId64, body);
+            Console.WriteLine($"[CSRepVanguard] API body para {steamId64}: {body}");
             return ParseResponse(body, steamId64);
         }
         catch (TaskCanceledException)
         {
-            _logger.LogWarning("[CSRepVanguard] Timeout al consultar API para {SteamId}.", steamId64);
+            Console.WriteLine($"[CSRepVanguard] Timeout al consultar API para {steamId64}.");
             return null;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[CSRepVanguard] Error inesperado al consultar API para {SteamId}.", steamId64);
+            Console.WriteLine($"[CSRepVanguard] Error inesperado al consultar API para {steamId64}: {ex.Message}");
             return null;
         }
     }
@@ -106,9 +101,7 @@ public class ApiService : IDisposable
             if (root.TryGetProperty("status", out var status) &&
                 status.GetString() != "OK")
             {
-                _logger.LogWarning(
-                    "[CSRepVanguard] La API devolvió status={Status} para {SteamId}",
-                    status.GetString(), steamId64);
+                Console.WriteLine($"[CSRepVanguard] La API devolvió status={status.GetString()} para {steamId64}");
                 return null;
             }
 
@@ -119,14 +112,12 @@ public class ApiService : IDisposable
                 return value;
             }
 
-            _logger.LogWarning(
-                "[CSRepVanguard] No se encontró 'result.trust_rating' en la respuesta para {SteamId}. JSON: {Json}",
-                steamId64, json);
+            Console.WriteLine($"[CSRepVanguard] No se encontró 'result.trust_rating' en la respuesta para {steamId64}. JSON: {json}");
             return null;
         }
         catch (JsonException ex)
         {
-            _logger.LogError(ex, "[CSRepVanguard] Respuesta JSON inválida para {SteamId}.", steamId64);
+            Console.WriteLine($"[CSRepVanguard] Respuesta JSON inválida para {steamId64}: {ex.Message}");
             return null;
         }
     }
