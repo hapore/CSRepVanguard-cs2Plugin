@@ -1,107 +1,107 @@
 # CSRepVanguard
 
-Plugin de [CounterStrikeSharp](https://github.com/roflmuffin/CounterStrikeSharp) para CS2 que verifica el **Trust Rating** de cada jugador al conectarse al servidor usando la API de [csrep.gg](https://csrep.gg). Si el rating está por debajo del umbral configurado, ejecuta automáticamente un comando de baneo.
+[CounterStrikeSharp](https://github.com/roflmuffin/CounterStrikeSharp) plugin for CS2 that checks every player's **Trust Rating** when they connect to the server using the [csrep.gg](https://csrep.gg) API. If the rating is below the configured threshold, it automatically executes a ban command.
 
 ---
 
-## Workflow completo
+## Full Workflow
 
 ```
-Jugador se conecta
+Player connects
         │
         ▼
-¿Registro en DB?  ──No──►  Consultar API csrep.gg
+Record in DB?  ──No──►  Query csrep.gg API
         │                          │
-       Sí                          ▼
-        │                  Guardar resultado en DB
+       Yes                         ▼
+        │                  Save result to DB
         ▼                          │
-¿is_banned = 1?                    │
-   Sí ◄────────────────────────────┘
+is_banned = 1?                     │
+   Yes ◄───────────────────────────┘
     │
     ▼
-Ejecutar BanCommand  ◄── (salida inmediata, sin llamar a la API)
+Execute BanCommand  ◄── (immediate exit, no API call)
         │
        No (is_banned = 0)
         │
         ▼
-¿Pasaron >= QueryCooldownDays desde LastChecked?
-       Sí                         No
+Has >= QueryCooldownDays passed since LastChecked?
+       Yes                        No
         │                          │
         ▼                          ▼
-Consultar API csrep.gg       Usar caché DB
+Query csrep.gg API           Use DB cache
         │                          │
         └──────────────────────────┘
                     │
                     ▼
-        ¿TrustRating < MinTrustRating?
+        TrustRating < MinTrustRating?
              │               │
-            Sí               No
+            Yes              No
              │               │
              ▼               ▼
-      Ejecutar BanCommand   (sin acción)
+      Execute BanCommand   (no action)
 ```
 
-### Paso a paso
+### Step by Step
 
-1. **Conexión del jugador** — Al recibir el evento `player_connect_full`, el plugin ignora bots y GOTV y lanza la verificación en un hilo separado para no bloquear el servidor.
+1. **Player connects** — On the `player_connect_full` event, the plugin ignores bots and GOTV and launches the check on a separate thread to avoid blocking the server.
 
-2. **Consulta a la base de datos** — Se busca el registro del jugador por SteamID64 en la tabla `{TablePrefix}players`.
+2. **Database query** — The player's record is looked up by SteamID64 in the `{TablePrefix}players` table.
 
-3. **¿El jugador ya está baneado en DB?**
-   - Si `is_banned = 1` → se ejecuta `BanCommand` **inmediatamente**, sin consultar la API ni comprobar el cooldown. El ban ya fue dictaminado previamente.
+3. **Is the player already banned in DB?**
+   - If `is_banned = 1` → `BanCommand` is executed **immediately**, without querying the API or checking the cooldown. The ban was already determined previously.
 
-4. **¿Se necesita consultar la API?** (solo si `is_banned = 0`)
-   - Si **no existe registro** → consultar siempre.
-   - Si existe pero `(ahora - LastChecked) >= QueryCooldownDays` → consultar de nuevo.
-   - Si el cooldown no ha expirado → usar el `TrustRating` guardado en DB (sin llamada a la API).
+4. **Does the API need to be queried?** (only if `is_banned = 0`)
+   - If **no record exists** → always query.
+   - If a record exists but `(now - LastChecked) >= QueryCooldownDays` → query again.
+   - If the cooldown has not expired → use the `TrustRating` stored in DB (no API call).
 
-5. **Llamada a la API** — `GET https://csrep.gg/api/players?ids={steamId64}` con el header `x-api-key`. Si la API falla o no responde, **no se banea** al jugador (beneficio de la duda).
+5. **API call** — `GET https://csrep.gg/api/players?ids={steamId64}` with the `x-api-key` header. If the API fails or does not respond, the player is **not banned** (benefit of the doubt).
 
-6. **Persistencia** — El resultado se guarda/actualiza en la DB con el timestamp actual y el flag `is_banned`.
+6. **Persistence** — The result is saved/updated in the DB with the current timestamp and the `is_banned` flag.
 
-7. **Decisión de baneo** — Si `TrustRating < MinTrustRating`, se ejecuta `BanCommand` en el hilo del juego via `Server.NextFrame()`.
+7. **Ban decision** — If `TrustRating < MinTrustRating`, `BanCommand` is executed on the game thread via `Server.NextFrame()`.
 
 ---
 
-## Instalación
+## Installation
 
-1. Compilar el proyecto:
+1. Build the project:
    ```bash
    dotnet build -c Release
    ```
 
-2. Copiar el `.dll` generado en `bin/Release/net8.0/` a:
+2. Copy the generated `.dll` from `bin/Release/net8.0/` to:
    ```
    game/csgo/addons/counterstrikesharp/plugins/CSRepVanguard/CSRepVanguard.dll
    ```
 
-3. Copiar **todos** los `.dll` del output (no solo el principal) a la carpeta del plugin:
+3. Copy **all** `.dll` files from the output (not just the main one) to the plugin folder:
    ```
    addons/counterstrikesharp/plugins/CSRepVanguard/
    ├── CSRepVanguard.dll
    ├── MySqlConnector.dll
    ├── Dapper.dll
-   └── (resto de dlls del output)
+   └── (rest of output dlls)
    ```
 
-4. Crear manualmente el archivo de configuración si el servidor no tiene permisos de escritura,
-   o arrancar el servidor una vez para que CounterStrikeSharp lo genere automáticamente.
+4. Manually create the configuration file if the server does not have write permissions,
+   or start the server once so CounterStrikeSharp generates it automatically.
 
-   > **Nota:** CounterStrikeSharp siempre nombra el archivo según el `ModuleName` del plugin.
-   > El archivo se llamará `CSRepVanguard.json`, no `config.json`.
+   > **Note:** CounterStrikeSharp always names the file after the plugin's `ModuleName`.
+   > The file will be called `CSRepVanguard.json`, not `config.json`.
 
 ---
 
-## Configuración
+## Configuration
 
-Archivo: `addons/counterstrikesharp/configs/plugins/CSRepVanguard/CSRepVanguard.json`
+File: `addons/counterstrikesharp/configs/plugins/CSRepVanguard/CSRepVanguard.json`
 
 ```json
 {
-  "ApiKey": "tu-api-key-de-csrep.gg",
+  "ApiKey": "your-csrep.gg-api-key",
   "ApiBaseUrl": "https://csrep.gg/api/players",
   "MinTrustRating": 80.0,
-  "BanCommand": "css_ban {steamid} 0 \"[CSRep] Trust Rating insuficiente ({trustrating})\"",
+  "BanCommand": "css_ban {steamid} 0 \"[CSRep] Insufficient Trust Rating ({trustrating})\"",
   "UnbanCommand": "css_unban {steamid}",
   "QueryCooldownDays": 1,
   "DatabaseConnectionString": "Server=localhost;Port=3306;Database=csrep;User=csrep_user;Password=CHANGE_ME;",
@@ -109,44 +109,44 @@ Archivo: `addons/counterstrikesharp/configs/plugins/CSRepVanguard/CSRepVanguard.
 }
 ```
 
-| Campo | Tipo | Descripción |
+| Field | Type | Description |
 |---|---|---|
-| `ApiKey` | `string` | API key de csrep.gg para autenticar las consultas. |
-| `ApiBaseUrl` | `string` | URL base del endpoint. El SteamID64 se pasa como `?ids=`. |
-| `MinTrustRating` | `double` | Trust Rating mínimo. Jugadores **por debajo** de este valor son baneados. |
-| `BanCommand` | `string` | Comando ejecutado al banear. Soporta `{steamid}`, `{name}` y `{trustrating}`. |
-| `UnbanCommand` | `string` | Comando ejecutado al desbanear. Soporta `{steamid}`. |
-| `QueryCooldownDays` | `int` | Días que deben pasar antes de volver a consultar la API por el mismo jugador. |
-| `DatabaseConnectionString` | `string` | Cadena de conexión MySQL/MariaDB. |
-| `TablePrefix` | `string` | Prefijo de las tablas. Default `cs_rep_` → tabla `cs_rep_players`. |
+| `ApiKey` | `string` | csrep.gg API key to authenticate queries. |
+| `ApiBaseUrl` | `string` | Base URL of the endpoint. The SteamID64 is passed as `?ids=`. |
+| `MinTrustRating` | `double` | Minimum Trust Rating. Players **below** this value are banned. |
+| `BanCommand` | `string` | Command executed on ban. Supports `{steamid}`, `{name}` and `{trustrating}`. |
+| `UnbanCommand` | `string` | Command executed on unban. Supports `{steamid}`. |
+| `QueryCooldownDays` | `int` | Days that must pass before querying the API again for the same player. |
+| `DatabaseConnectionString` | `string` | MySQL/MariaDB connection string. |
+| `TablePrefix` | `string` | Table prefix. Default `cs_rep_` → table `cs_rep_players`. |
 
-### Placeholders de `BanCommand`
+### `BanCommand` Placeholders
 
-| Placeholder | Valor |
+| Placeholder | Value |
 |---|---|
-| `{steamid}` | SteamID64 del jugador |
-| `{name}` | Nombre en Steam del jugador |
-| `{trustrating}` | Valor numérico obtenido de la API |
+| `{steamid}` | Player's SteamID64 |
+| `{name}` | Player's Steam name |
+| `{trustrating}` | Numeric value obtained from the API |
 
-### Placeholders de `UnbanCommand`
+### `UnbanCommand` Placeholders
 
-| Placeholder | Valor |
+| Placeholder | Value |
 |---|---|
-| `{steamid}` | SteamID64 del jugador |
+| `{steamid}` | Player's SteamID64 |
 
 ---
 
-## Comandos de administración
+## Admin Commands
 
-| Comando | Descripción |
+| Command | Description |
 |---|---|
-| `css_csrep unbanall` | Desbanea a todos los jugadores registrados como baneados en la DB. Ejecuta `UnbanCommand` por cada uno y limpia el flag `is_banned` en la tabla. Puede ejecutarse desde consola del servidor o por un admin con permisos. |
+| `css_csrep unbanall` | Unbans all players registered as banned in the DB. Executes `UnbanCommand` for each one and clears the `is_banned` flag in the table. Can be run from the server console or by an admin with permissions. |
 
 ---
 
-## Base de datos
+## Database
 
-El plugin crea automáticamente la siguiente tabla al arrancar:
+The plugin automatically creates the following table on startup:
 
 ```sql
 CREATE TABLE IF NOT EXISTS `cs_rep_players` (
@@ -158,11 +158,11 @@ CREATE TABLE IF NOT EXISTS `cs_rep_players` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 ```
 
-Al usar una base de datos compartida (mismo `DatabaseConnectionString` en varios servidores) y un `TablePrefix` común, **todos los servidores comparten el historial de verificaciones**, evitando consultas redundantes a la API cuando el jugador ya fue verificado recientemente en otro servidor.
+When using a shared database (same `DatabaseConnectionString` across multiple servers) with a common `TablePrefix`, **all servers share the verification history**, avoiding redundant API queries when a player was already verified recently on another server.
 
 ---
 
-## Respuesta de la API
+## API Response
 
 ```json
 {
@@ -180,14 +180,14 @@ Al usar una base de datos compartida (mismo `DatabaseConnectionString` en varios
 }
 ```
 
-El plugin lee `result.trust_rating`. Si `status` no es `"OK"` o el campo no existe, la verificación se omite y no se banea al jugador.
+The plugin reads `result.trust_rating`. If `status` is not `"OK"` or the field does not exist, the check is skipped and the player is not banned.
 
 ---
 
-## Dependencias
+## Dependencies
 
-| Paquete | Uso |
+| Package | Usage |
 |---|---|
-| `CounterStrikeSharp.API` | Framework de plugins para CS2 |
-| `MySqlConnector` | Driver asíncrono para MySQL/MariaDB |
-| `Dapper` | Micro-ORM para ejecutar queries SQL |
+| `CounterStrikeSharp.API` | CS2 plugin framework |
+| `MySqlConnector` | Async driver for MySQL/MariaDB |
+| `Dapper` | Micro-ORM for executing SQL queries |
